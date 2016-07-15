@@ -824,7 +824,9 @@ void planning_scene_monitor::PlanningSceneMonitor::unlockSceneRead()
 
 void planning_scene_monitor::PlanningSceneMonitor::lockSceneWrite()
 {
+  ros::WallTime t = ros::WallTime::now();
   scene_update_mutex_.lock();
+  ROS_DEBUG_STREAM_NAMED("PSM", "write lock took " << (ros::WallTime::now()-t).toSec()*1e3);
   if (octomap_monitor_)
     octomap_monitor_->getOcTreePtr()->lockWrite();
 }
@@ -1035,7 +1037,7 @@ void planning_scene_monitor::PlanningSceneMonitor::onStateUpdate(const sensor_ms
       update = true;
     }
   }
-
+  ROS_DEBUG_STREAM_NAMED("PSM", "Got new joint state. Update: " << update << " time: " << n);
   // run the state update with state_pending_mutex_ unlocked
   if (update)
     updateSceneWithCurrentState();
@@ -1129,6 +1131,7 @@ void planning_scene_monitor::PlanningSceneMonitor::updateSceneWithCurrentState()
 
     {
       boost::unique_lock<boost::shared_mutex> ulock(scene_update_mutex_);
+      ROS_DEBUG_STREAM_NAMED("PSM", "update robot state, locking took: " << (ros::WallTime::now()-last_state_update_).toSec()*1e3);
       current_state_monitor_->setToCurrentState(scene_->getCurrentStateNonConst());
       last_update_time_ = ros::Time::now();
       scene_->getCurrentStateNonConst().update(); // compute all transforms
