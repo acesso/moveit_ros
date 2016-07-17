@@ -808,25 +808,22 @@ void planning_scene_monitor::PlanningSceneMonitor::currentWorldObjectUpdateCallb
     }
 }
 
-void planning_scene_monitor::PlanningSceneMonitor::lockSceneRead()
-{
-  scene_update_mutex_.lock_shared();
-  if (octomap_monitor_)
-    octomap_monitor_->getOcTreePtr()->lockRead();
-}
-
-void planning_scene_monitor::PlanningSceneMonitor::lockSceneReadSynced(ros::Time t)
+void planning_scene_monitor::PlanningSceneMonitor::syncUpdates(ros::Time t)
 {
   if (t.isZero()) t = ros::Time::now(); // default is current
-
+  ROS_DEBUG("sync updates");
   // Ensure that last state update was not later than t
   boost::shared_lock<boost::shared_mutex> lock(scene_update_mutex_);
   while (last_state_update_time_ < t)
     new_scene_update_condition_.wait(lock);
+}
 
-  // release lock and lock scene for reading as usual
-  lock.release();
-  lockSceneRead();
+void planning_scene_monitor::PlanningSceneMonitor::lockSceneRead()
+{
+  ROS_DEBUG_NAMED("PSM", "lock scene read");
+  scene_update_mutex_.lock_shared();
+  if (octomap_monitor_)
+    octomap_monitor_->getOcTreePtr()->lockRead();
 }
 
 void planning_scene_monitor::PlanningSceneMonitor::unlockSceneRead()
@@ -834,10 +831,12 @@ void planning_scene_monitor::PlanningSceneMonitor::unlockSceneRead()
   if (octomap_monitor_)
     octomap_monitor_->getOcTreePtr()->unlockRead();
   scene_update_mutex_.unlock_shared();
+  ROS_DEBUG_NAMED("PSM", "unlock scene read");
 }
 
 void planning_scene_monitor::PlanningSceneMonitor::lockSceneWrite()
 {
+  ROS_DEBUG_NAMED("PSM", "lock scene write");
   ros::WallTime t = ros::WallTime::now();
   scene_update_mutex_.lock();
   ROS_DEBUG_STREAM_NAMED("PSM", "write lock took " << (ros::WallTime::now()-t).toSec()*1e3);
@@ -850,6 +849,7 @@ void planning_scene_monitor::PlanningSceneMonitor::unlockSceneWrite()
   if (octomap_monitor_)
     octomap_monitor_->getOcTreePtr()->unlockWrite();
   scene_update_mutex_.unlock();
+  ROS_DEBUG_NAMED("PSM", "unlock scene write");
 }
 
 void planning_scene_monitor::PlanningSceneMonitor::startSceneMonitor(const std::string &scene_topic)

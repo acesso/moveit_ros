@@ -336,11 +336,11 @@ public:
   /** @brief This function is called every time there is a change to the planning scene */
   void triggerSceneUpdateEvent(SceneUpdateType update_type);
 
+  /** \brief Wait until all pending scene updates with timestamps < t are incorporated */
+  void syncUpdates(ros::Time t = ros::Time());
+
   /** \brief Lock the scene for reading (multiple threads can lock for reading at the same time) */
   void lockSceneRead();
-
-  /** \brief Lock the scene for reading, but ensure that all updates before t are processed */
-  void lockSceneReadSynced(ros::Time t = ros::Time());
 
   /** \brief Unlock the scene from reading (multiple threads can lock for reading at the same time) */
   void unlockSceneRead();
@@ -596,7 +596,7 @@ protected:
       planning_scene_monitor_(planning_scene_monitor), read_only_(read_only)
     {
       if (read_only)
-        planning_scene_monitor_->lockSceneReadSynced();
+        planning_scene_monitor_->lockSceneRead();
       else
         planning_scene_monitor_->lockSceneWrite();
     }

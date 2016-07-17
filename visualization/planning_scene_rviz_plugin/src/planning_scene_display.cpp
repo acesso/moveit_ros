@@ -299,6 +299,8 @@ const robot_model::RobotModelConstPtr& PlanningSceneDisplay::getRobotModel() con
 
 planning_scene_monitor::LockedPlanningSceneRO PlanningSceneDisplay::getPlanningSceneRO() const
 {
+  if (planning_scene_monitor_)
+    planning_scene_monitor_->syncUpdates();
   return planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_);
 }
 
