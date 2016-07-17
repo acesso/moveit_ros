@@ -339,6 +339,9 @@ public:
   /** \brief Lock the scene for reading (multiple threads can lock for reading at the same time) */
   void lockSceneRead();
 
+  /** \brief Lock the scene for reading, but ensure that all updates before t are processed */
+  void lockSceneReadSynced(ros::Time t = ros::Time());
+
   /** \brief Unlock the scene from reading (multiple threads can lock for reading at the same time) */
   void unlockSceneRead();
 
@@ -464,6 +467,7 @@ protected:
   boost::recursive_mutex update_lock_;
   std::vector<boost::function<void(SceneUpdateType)> > update_callbacks_; /// List of callbacks to trigger when updates are received
   ros::Time last_update_time_; /// Last time the state was updated
+  ros::Time last_state_update_time_; /// Last time the robot state was updated
 
 private:
 
@@ -505,7 +509,7 @@ private:
 
   /// Last time the state was updated from current_state_monitor_
   // Only access this from callback functions (and constructor)
-  ros::WallTime last_state_update_;
+  ros::WallTime wall_last_state_update_;
 
   robot_model_loader::RobotModelLoaderPtr rm_loader_;
   robot_model::RobotModelConstPtr robot_model_;
@@ -592,7 +596,7 @@ protected:
       planning_scene_monitor_(planning_scene_monitor), read_only_(read_only)
     {
       if (read_only)
-        planning_scene_monitor_->lockSceneRead();
+        planning_scene_monitor_->lockSceneReadSynced();
       else
         planning_scene_monitor_->lockSceneWrite();
     }

@@ -213,8 +213,8 @@ void planning_scene_monitor::PlanningSceneMonitor::initialize(const planning_sce
   publish_planning_scene_frequency_ = 2.0;
   new_scene_update_ = UPDATE_NONE;
 
-  last_update_time_ = ros::Time::now();
-  last_state_update_ = ros::WallTime::now();
+  last_update_time_ = last_state_update_time_ = ros::Time::now();
+  wall_last_state_update_ = ros::WallTime::now();
   dt_state_update_ = ros::WallDuration(0.1);
 
   double temp_wait_time;
@@ -815,6 +815,20 @@ void planning_scene_monitor::PlanningSceneMonitor::lockSceneRead()
     octomap_monitor_->getOcTreePtr()->lockRead();
 }
 
+void planning_scene_monitor::PlanningSceneMonitor::lockSceneReadSynced(ros::Time t)
+{
+  if (t.isZero()) t = ros::Time::now(); // default is current
+
+  // Ensure that last state update was not later than t
+  boost::shared_lock<boost::shared_mutex> lock(scene_update_mutex_);
+  while (last_state_update_time_ < t)
+    new_scene_update_condition_.wait(lock);
+
+  // release lock and lock scene for reading as usual
+  lock.release();
+  lockSceneRead();
+}
+
 void planning_scene_monitor::PlanningSceneMonitor::unlockSceneRead()
 {
   if (octomap_monitor_)
@@ -1020,7 +1034,7 @@ void planning_scene_monitor::PlanningSceneMonitor::stopStateMonitor()
 void planning_scene_monitor::PlanningSceneMonitor::onStateUpdate(const sensor_msgs::JointStateConstPtr & /* joint_state */ )
 {
   const ros::WallTime &n = ros::WallTime::now();
-  ros::WallDuration dt = n - last_state_update_;
+  ros::WallDuration dt = n - wall_last_state_update_;
 
   bool update = false;
   {
@@ -1033,7 +1047,7 @@ void planning_scene_monitor::PlanningSceneMonitor::onStateUpdate(const sensor_ms
     else
     {
       state_update_pending_ = false;
-      last_state_update_ = n;
+      wall_last_state_update_ = n;
       update = true;
     }
   }
@@ -1050,7 +1064,7 @@ void planning_scene_monitor::PlanningSceneMonitor::stateUpdateTimerCallback(cons
     bool update = false;
 
     const ros::WallTime &n = ros::WallTime::now();
-    ros::WallDuration dt = n - last_state_update_;
+    ros::WallDuration dt = n - wall_last_state_update_;
 
     {
       // lock for access to dt_state_update_ and state_update_pending_
@@ -1058,7 +1072,7 @@ void planning_scene_monitor::PlanningSceneMonitor::stateUpdateTimerCallback(cons
       if (state_update_pending_ && dt >= dt_state_update_)
       {
         state_update_pending_ = false;
-        last_state_update_ = ros::WallTime::now();
+        wall_last_state_update_ = ros::WallTime::now();
         update = true;
       }
     }
@@ -1131,9 +1145,10 @@ void planning_scene_monitor::PlanningSceneMonitor::updateSceneWithCurrentState()
 
     {
       boost::unique_lock<boost::shared_mutex> ulock(scene_update_mutex_);
-      ROS_DEBUG_STREAM_NAMED("PSM", "update robot state, locking took: " << (ros::WallTime::now()-last_state_update_).toSec()*1e3);
+      ROS_DEBUG_STREAM_NAMED("PSM", "update robot state, locking took: " << (ros::WallTime::now()-wall_last_state_update_).toSec()*1e3);
       current_state_monitor_->setToCurrentState(scene_->getCurrentStateNonConst());
       last_update_time_ = ros::Time::now();
+      last_state_update_time_  = current_state_monitor_->getCurrentStateTime();
       scene_->getCurrentStateNonConst().update(); // compute all transforms
     }
     triggerSceneUpdateEvent(UPDATE_STATE);
