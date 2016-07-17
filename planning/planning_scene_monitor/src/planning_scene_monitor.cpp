@@ -149,6 +149,8 @@ planning_scene_monitor::PlanningSceneMonitor::~PlanningSceneMonitor()
   stopStateMonitor();
   stopWorldGeometryMonitor();
   stopSceneMonitor();
+  spinner_->stop();
+
   delete reconfigure_impl_;
   current_state_monitor_.reset();
   scene_const_.reset();
@@ -162,6 +164,11 @@ void planning_scene_monitor::PlanningSceneMonitor::initialize(const planning_sce
 {
   moveit::tools::Profiler::ScopedStart prof_start;
   moveit::tools::Profiler::ScopedBlock prof_block("PlanningSceneMonitor::initialize");
+
+  // start our own spinner listening on our own callback_queue to become independent of any global callback queue
+  root_nh_.setCallbackQueue(&callback_queue_);
+  spinner_.reset(new ros::AsyncSpinner(1 /* threads */, &callback_queue_));
+  spinner_->start();
 
   if (monitor_name_.empty())
     monitor_name_ = "planning_scene_monitor";
@@ -808,10 +815,11 @@ void planning_scene_monitor::PlanningSceneMonitor::currentWorldObjectUpdateCallb
     }
 }
 
-void planning_scene_monitor::PlanningSceneMonitor::syncUpdates(ros::Time t)
+bool planning_scene_monitor::PlanningSceneMonitor::syncUpdates(const ros::Time &t)
 {
-  if (t.isZero()) t = ros::Time::now(); // default is current
-  ROS_DEBUG("sync updates");
+  if (!t.isValid())
+    return;
+  ROS_DEBUG_NAMED("PSM", "sync updates");
   // Ensure that last state update was not later than t
   boost::shared_lock<boost::shared_mutex> lock(scene_update_mutex_);
   while (last_state_update_time_ < t)
@@ -995,7 +1003,7 @@ void planning_scene_monitor::PlanningSceneMonitor::startStateMonitor(const std::
   if (scene_)
   {
     if (!current_state_monitor_)
-      current_state_monitor_.reset(new CurrentStateMonitor(getRobotModel(), tf_));
+      current_state_monitor_.reset(new CurrentStateMonitor(getRobotModel(), tf_, root_nh_));
     current_state_monitor_->addUpdateCallback(boost::bind(&PlanningSceneMonitor::onStateUpdate, this, _1));
     current_state_monitor_->startStateMonitor(joint_states_topic);
 

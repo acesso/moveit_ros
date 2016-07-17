@@ -239,7 +239,7 @@ void MotionPlanningFrame::updateQueryStateHelper(robot_state::RobotState &state,
 
   if (v == "<current>")
   {
-    const planning_scene_monitor::LockedPlanningSceneRO &ps = planning_display_->getPlanningSceneRO();
+    const planning_scene_monitor::LockedPlanningSceneRO &ps = planning_display_->getPlanningSceneRO(ros::Time::now());
     if (ps)
       state = ps->getCurrentState();
     return;
@@ -403,7 +403,7 @@ void MotionPlanningFrame::remoteUpdateStartStateCallback(const std_msgs::EmptyCo
   if (move_group_ && planning_display_)
   {
     robot_state::RobotState state = *planning_display_->getQueryStartState();
-    const planning_scene_monitor::LockedPlanningSceneRO &ps = planning_display_->getPlanningSceneRO();
+    const planning_scene_monitor::LockedPlanningSceneRO &ps = planning_display_->getPlanningSceneRO(ros::Time::now());
     if (ps)
     {
       state = ps->getCurrentState();
@@ -417,7 +417,7 @@ void MotionPlanningFrame::remoteUpdateGoalStateCallback(const std_msgs::EmptyCon
   if (move_group_ && planning_display_)
   {
     robot_state::RobotState state = *planning_display_->getQueryStartState();
-    const planning_scene_monitor::LockedPlanningSceneRO &ps = planning_display_->getPlanningSceneRO();
+    const planning_scene_monitor::LockedPlanningSceneRO &ps = planning_display_->getPlanningSceneRO(ros::Time::now());
     if (ps)
     {
       state = ps->getCurrentState();

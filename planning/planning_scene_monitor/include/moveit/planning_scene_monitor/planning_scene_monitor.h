@@ -337,7 +337,7 @@ public:
   void triggerSceneUpdateEvent(SceneUpdateType update_type);
 
   /** \brief Wait until all pending scene updates with timestamps < t are incorporated */
-  void syncUpdates(ros::Time t = ros::Time());
+  bool syncUpdates(const ros::Time &t);
 
   /** \brief Lock the scene for reading (multiple threads can lock for reading at the same time) */
   void lockSceneRead();
@@ -414,6 +414,8 @@ protected:
 
   ros::NodeHandle                       nh_;
   ros::NodeHandle                       root_nh_;
+  ros::CallbackQueue                    callback_queue_;
+  boost::scoped_ptr<ros::AsyncSpinner>  spinner_;
   boost::shared_ptr<tf::Transformer>    tf_;
   std::string                           robot_description_;
 

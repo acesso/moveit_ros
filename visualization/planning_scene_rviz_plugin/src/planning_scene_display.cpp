@@ -297,10 +297,10 @@ const robot_model::RobotModelConstPtr& PlanningSceneDisplay::getRobotModel() con
   }
 }
 
-planning_scene_monitor::LockedPlanningSceneRO PlanningSceneDisplay::getPlanningSceneRO() const
+planning_scene_monitor::LockedPlanningSceneRO PlanningSceneDisplay::getPlanningSceneRO(const ros::Time &t) const
 {
   if (planning_scene_monitor_)
-    planning_scene_monitor_->syncUpdates();
+    planning_scene_monitor_->syncUpdates(t);
   return planning_scene_monitor::LockedPlanningSceneRO(planning_scene_monitor_);
 }
 
