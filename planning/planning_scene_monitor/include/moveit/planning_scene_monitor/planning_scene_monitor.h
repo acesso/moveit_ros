@@ -337,7 +337,7 @@ public:
   void triggerSceneUpdateEvent(SceneUpdateType update_type);
 
   /** \brief Wait until all pending scene updates with timestamps < t are incorporated */
-  bool syncUpdates(const ros::Time &t);
+  void syncUpdates(const ros::Time &t);
 
   /** \brief Lock the scene for reading (multiple threads can lock for reading at the same time) */
   void lockSceneRead();
@@ -469,7 +469,6 @@ protected:
   boost::recursive_mutex update_lock_;
   std::vector<boost::function<void(SceneUpdateType)> > update_callbacks_; /// List of callbacks to trigger when updates are received
   ros::Time last_update_time_; /// Last time the state was updated
-  ros::Time last_state_update_time_; /// Last time the robot state was updated
 
 private:
 

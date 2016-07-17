@@ -220,7 +220,7 @@ void planning_scene_monitor::PlanningSceneMonitor::initialize(const planning_sce
   publish_planning_scene_frequency_ = 2.0;
   new_scene_update_ = UPDATE_NONE;
 
-  last_update_time_ = last_state_update_time_ = ros::Time::now();
+  last_update_time_ = ros::Time::now();
   wall_last_state_update_ = ros::WallTime::now();
   dt_state_update_ = ros::WallDuration(0.1);
 
@@ -815,15 +815,20 @@ void planning_scene_monitor::PlanningSceneMonitor::currentWorldObjectUpdateCallb
     }
 }
 
-bool planning_scene_monitor::PlanningSceneMonitor::syncUpdates(const ros::Time &t)
+void planning_scene_monitor::PlanningSceneMonitor::syncUpdates(const ros::Time &t)
 {
   if (!t.isValid())
     return;
-  ROS_DEBUG_NAMED("PSM", "sync updates");
-  // Ensure that last state update was not later than t
+  ros::WallDuration d(0.01);
+
+  // ensure that last state update is more recent than t
+  while (current_state_monitor_ && !current_state_monitor_->haveCompleteState(ros::Time::now()-t))
+    d.sleep(); // there is no condition variable to wait for
+
+  // ensure that last update time is more recent than t (or no more update events pending)
   boost::shared_lock<boost::shared_mutex> lock(scene_update_mutex_);
-  while (last_state_update_time_ < t)
-    new_scene_update_condition_.wait(lock);
+  while (last_update_time_ < t && !callback_queue_.empty())
+    new_scene_update_condition_.wait_for(lock, boost::chrono::milliseconds(10));
 }
 
 void planning_scene_monitor::PlanningSceneMonitor::lockSceneRead()
@@ -1156,7 +1161,6 @@ void planning_scene_monitor::PlanningSceneMonitor::updateSceneWithCurrentState()
       ROS_DEBUG_STREAM_NAMED("PSM", "update robot state, locking took: " << (ros::WallTime::now()-wall_last_state_update_).toSec()*1e3);
       current_state_monitor_->setToCurrentState(scene_->getCurrentStateNonConst());
       last_update_time_ = ros::Time::now();
-      last_state_update_time_  = current_state_monitor_->getCurrentStateTime();
       scene_->getCurrentStateNonConst().update(); // compute all transforms
     }
     triggerSceneUpdateEvent(UPDATE_STATE);
