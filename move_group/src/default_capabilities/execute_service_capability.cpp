@@ -78,6 +78,8 @@ bool move_group::MoveGroupExecuteService::executeTrajectoryService(moveit_msgs::
             res.error_code.val = moveit_msgs::MoveItErrorCodes::TIMED_OUT;
           else
             res.error_code.val = moveit_msgs::MoveItErrorCodes::CONTROL_FAILED;
+      // wait for all planning scene updates to be processed
+      context_->planning_scene_monitor_->syncUpdates(ros::Time::now());
       ROS_INFO_STREAM("Execution completed: " << es.asString());
     }
     else
