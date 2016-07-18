@@ -1071,7 +1071,7 @@ void TrajectoryExecutionManager::executeThread(const ExecutionCompleteCallback &
       break;
   }
 
-  ROS_DEBUG_NAMED("traj_execution","Completed trajectory execution with status %s ...", last_execution_status_.asString().c_str());
+  ROS_DEBUG_NAMED("traj_execution","Completed trajectory execution with status %s ... %f", last_execution_status_.asString().c_str(), fmod(ros::Time::now().toSec(), 10.));
 
   // notify whoever is waiting for the event of trajectory completion
   execution_state_mutex_.lock();

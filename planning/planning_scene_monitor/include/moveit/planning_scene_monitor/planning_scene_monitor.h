@@ -411,6 +411,9 @@ protected:
   planning_scene::PlanningSceneConstPtr scene_const_;
   planning_scene::PlanningScenePtr      parent_scene_; /// if diffs are monitored, this is the pointer to the parent scene
   boost::shared_mutex                   scene_update_mutex_; /// mutex for stored scene
+  ros::Time                             last_update_time_; /// Last time the scene was updated
+  ros::Time                             last_robot_motion_time_; /// Last time the robot has moved
+  bool                                  enforce_next_state_update_;
 
   ros::NodeHandle                       nh_;
   ros::NodeHandle                       root_nh_;
@@ -468,7 +471,6 @@ protected:
   /// lock access to update_callbacks_
   boost::recursive_mutex update_lock_;
   std::vector<boost::function<void(SceneUpdateType)> > update_callbacks_; /// List of callbacks to trigger when updates are received
-  ros::Time last_update_time_; /// Last time the state was updated
 
 private:
 
